@@ -38,7 +38,7 @@
         .button-container {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 5px;
             margin: 15px 0;
         }
 
@@ -54,6 +54,7 @@
 
         button.process { background-color: #4CAF50; color: white; }
         button.copy { background-color: #4CAF50; color: white; }
+        button.paste { background-color: #4CAF50; color: white; }
         button.clear { background-color: #4CAF50; color: white; }
         button.help { background-color: #f44336; color: white; }
 
@@ -71,6 +72,7 @@
         .cm-level1 { color: #ff6b6b; font-weight: bold; } /* 柔和的红色 */
         .cm-level2 { color: #4dabf7; font-weight: bold; } /* 柔和的蓝色 */
         .cm-level3 { color: #9c88ff; font-weight: bold; } /* 柔和的紫色 */
+        .cm-end { color: #4ad26f; font-weight: bold; } /* 柔和的紫色 */
 
         /* 帮助弹窗样式 */
         .help-modal, .overlay {
@@ -134,6 +136,7 @@
             <button class="process" onclick="processText()">处理</button>
             <button class="clear" onclick="clearEditor()">清空</button>
             <button class="copy" onclick="copyOutput()">复制</button>
+            <button class="paste" onclick="pasteFromClipboard()">粘贴</button>  <!-- 新增按钮 -->
             <button class="help" onclick="showHelp()">帮助</button>
         </div>
         <textarea id="output" placeholder="输入方式见帮助，处理结果将显示在此…" readonly></textarea>
@@ -143,15 +146,22 @@
     <div class="help-modal" id="helpModal">
     <h2 style="text-align: center;">帮助</h2>
     <h3>1 背景介绍</h3>
-    <p>　　考虑到tieba等平台对富文本支持较差，且自动吞行首半角空格。因此我们可用全角符号来代替之，让文字有更好的层级结构。
-    <br>　　而全角和半角反复切换比较麻烦，因此我们可以借助格式化工具来实现全角符号的自动插入。此外，还有一些细节问题，比如了为避免吞空行，我们使用一些难以被网页渲染的特殊unicode去代替它们。</p>
+    <p>　　考虑到tieba等平台对富文本支持较差，且自动吞行首半角空格。因此我们可用全角符号来代替之，使文字有更好的层级结构。
+    <br>　　而全角和半角反复切换比较麻烦，因此我们可以借助格式化工具实现全角符号的自动插入。(此外，还有一些细节，比如为了避免吞空行，我们可用一些难以被网页渲染的特殊unicode去代替它们。)</p>
     <br>
     <h3>2 使用说明</h3>
     <p>　　在上侧输入框输入文字即可，输入完毕点击“处理”则在输出框自动生成处理结果，点击“复制”则复制输出结果。<br>
-    　　语法内容："\"表示换行，"<span style="color: #ff6b6b;font-weight: bold;">.1</span>"表示一级，"<span style="color: #4dabf7;font-weight: bold;">.2</span>"表示二级，"<span style="color: #9c88ff;font-weight: bold;">.3</span>"表示三级。</p>
+    　　<br>　　语法内容：<br>
+　　"<span style="color: #ff6b6b;font-weight: bold;">.1</span>" 表示：一级编号内容，<br>
+　　"<span style="color: #4dabf7;font-weight: bold;">.2</span>" 表示：二级编号内容，<br>
+　　"<span style="color: #9c88ff;font-weight: bold;">.3</span>" 表示：三级编号内容，<br>
+　　"<span style="color: #4ad26f; font-weight: bold;">.end</span>" 表示：结束(并重置)编号，<br>
+　　"\" 表示：换行(而不增加编号)，<br>
+　　当文本前没有编号样式或已结束编号时，默认为无编号。此时加前缀"\t"可表示两个全角空格的缩进。
+　　</p>
     <br>
     <h3>3 使用示例</h3>
-    <p>　　输入示例：</p>
+    <p>　　输入示例１：</p>
     <pre>
 <span style="color: #ff6b6b;font-weight: bold;">.1</span>
 第一点\
@@ -171,7 +181,7 @@
 更细分点
 <span style="color: #4dabf7;font-weight: bold;">.2</span>
 第三分点</pre>
-    <p>　　对应输出：</p>
+    <p>　　对应输出１：</p>
     <pre>
 １　第一点
 　　比较长的文字
@@ -185,6 +195,25 @@
 　　　　第二分点换行
 　　　　１　更细分点
 　　３　第三分点</pre>
+    <p>　　输入示例２：</p>
+    <pre>
+一行无编号文字
+<span style="color: #ff6b6b;font-weight: bold;">.1</span>
+一行有编号文字\
+换行
+<span style="color: #4ad26f; font-weight: bold;">.end</span>
+又一行无编号文字
+\t添加两个全角空格作为缩进
+<span style="color: #ff6b6b;font-weight: bold;">.1</span>
+重新启用编号</pre>
+    <p>　　对应输出２：</p>
+    <pre>
+一行无编号文字
+１　一行有编号文字
+　　换行
+又一行无编号文字
+　　添加两个全角空格作为缩进
+１　重新启用编号</pre>
     <div class="button-container"><button onclick="hideHelp()">关闭</button></div>
 </div>
 
@@ -197,6 +226,7 @@
                     if (stream.match(/^\.1/)) return "level1";
                     if (stream.match(/^\.2/)) return "level2";
                     if (stream.match(/^\.3/)) return "level3";
+                    if (stream.match(/^\.end/)) return "end";
                 }
                 stream.next();
             }
@@ -246,6 +276,14 @@
             continuationDepth = 0;
             isContinuation = false;
             continue;
+        
+        } else if (line.startsWith('.end')) {
+            // 用于结束编号. 当检测到 .end 时，重置当前层级和计数器
+            currentLevel = 0;
+            counters = [0, 0, 0];
+            continuationDepth = 0;
+            isContinuation = false;
+            continue;
         }
 
         // 处理空行
@@ -278,6 +316,14 @@
                 isContinuation = false;
             }
         }
+        else {
+            if (line.startsWith('\\t')){ // 用于增加缩进
+                result.push('　　'+line.slice(2));
+            }
+            else { // 普通文本
+            result.push(line);
+            }
+        }
     }
 
         document.getElementById('output').value = result.join('\n');
@@ -299,6 +345,20 @@
         const output = document.getElementById('output');
         output.select();
         navigator.clipboard.writeText(output.value);
+    }
+    
+    function pasteFromClipboard() {
+    navigator.clipboard.readText()
+        .then(text => {
+            // 将剪贴板内容按行分割后插入编辑器
+            const currentValue = editor.getValue();
+            const newText = currentValue ? currentValue + '\n' + text : text;
+            editor.setValue(newText);
+        })
+        .catch(err => {
+            console.error('无法读取剪贴板:', err);
+            alert('无法访问剪贴板，请确保已授予权限');
+        });
     }
 
     function showHelp() {
