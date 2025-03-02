@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFormatter v1.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.js"></script>
+    <style>
+        body {
+            font-family: monospace, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 88vh;
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .CodeMirror {
+            height: 150px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        button {
+            padding: 10px 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            width: 120px;
+        }
+
+        button.process { background-color: #4CAF50; color: white; }
+        button.copy { background-color: #4CAF50; color: white; }
+        button.clear { background-color: #4CAF50; color: white; }
+        button.help { background-color: #f44336; color: white; }
+
+        #output {
+            width: 92%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        /* 自定义语法高亮 */
+        .cm-level1 { color: #ff6b6b; font-weight: bold; } /* 柔和的红色 */
+        .cm-level2 { color: #4dabf7; font-weight: bold; } /* 柔和的蓝色 */
+        .cm-level3 { color: #9c88ff; font-weight: bold; } /* 柔和的紫色 */
+
+        /* 帮助弹窗样式 */
+        .help-modal, .overlay {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 90%;
+            max-width: 500px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        /* 帮助弹窗内容样式 */
+        .help-modal p {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .help-modal pre {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #333;
+        }
+        .overlay {
+            background: rgba(0, 0, 0, 0.5);
+            top: 0;
+            left: 0;
+            transform: none;
+            height: 100%;
+            width: 100%;
+        }
+        /* 帮助弹窗中的关闭按钮样式 */
+        .help-modal button {
+            padding: 10px 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            width: 80px;
+            background-color: #f44336;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center;">AutoFormat</h1>
+        <div id="editor"></div>
+        <div class="button-container">
+            <button class="process" onclick="processText()">处理</button>
+            <button class="clear" onclick="clearEditor()">清空</button>
+            <button class="copy" onclick="copyOutput()">复制</button>
+            <button class="help" onclick="showHelp()">帮助</button>
+        </div>
+        <textarea id="output" placeholder="输入方式见帮助，处理结果将显示在此…" readonly></textarea>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="help-modal" id="helpModal">
+    <h2 style="text-align: center;">帮助</h2>
+    <h3>1 背景介绍</h3>
+    <p>　　考虑到tieba等平台对富文本支持较差，且自动吞行首半角空格。因此我们可用全角符号来代替之，让文字有更好的层级结构。
+    <br>　　而全角和半角反复切换比较麻烦，因此我们可以借助格式化工具来实现全角符号的自动插入。此外，还有一些细节问题，比如了为避免吞空行，我们使用一些难以被网页渲染的特殊unicode去代替它们。</p>
+    <br>
+    <h3>2 使用说明</h3>
+    <p>　　在上侧输入框输入文字即可，输入完毕点击“处理”则在输出框自动生成处理结果，点击“复制”则复制输出结果。<br>
+    　　语法内容："\"表示换行，"<span style="color: #ff6b6b;font-weight: bold;">.1</span>"表示一级，"<span style="color: #4dabf7;font-weight: bold;">.2</span>"表示二级，"<span style="color: #9c88ff;font-weight: bold;">.3</span>"表示三级。</p>
+    <br>
+    <h3>3 使用示例</h3>
+    <p>　　输入示例：</p>
+    <pre>
+<span style="color: #ff6b6b;font-weight: bold;">.1</span>
+第一点\
+比较长的文字
+<span style="color: #4dabf7;font-weight: bold;">.2</span>
+第一分点
+第二分点
+第三分点
+<span style="color: #ff6b6b;font-weight: bold;">.1</span>
+第二点
+
+<span style="color: #4dabf7;font-weight: bold;">.2</span>
+第一分点
+第二分点\
+第二分点换行
+<span style="color: #9c88ff;font-weight: bold;">.3</span>
+更细分点
+<span style="color: #4dabf7;font-weight: bold;">.2</span>
+第三分点</pre>
+    <p>　　对应输出：</p>
+    <pre>
+１　第一点
+　　比较长的文字
+　　１　第一分点
+　　２　第二分点
+　　３　第三分点
+２　第二点
+̲
+　　１　第一分点
+　　２　第二分点
+　　　　第二分点换行
+　　　　１　更细分点
+　　３　第三分点</pre>
+    <div class="button-container"><button onclick="hideHelp()">关闭</button></div>
+</div>
+
+<script>
+    // 自定义语法高亮
+    CodeMirror.defineMode("levelHighlight", function() {
+        return {
+            token: function(stream) {
+                if (stream.sol()) {
+                    if (stream.match(/^\.1/)) return "level1";
+                    if (stream.match(/^\.2/)) return "level2";
+                    if (stream.match(/^\.3/)) return "level3";
+                }
+                stream.next();
+            }
+        };
+    });
+
+    // 初始化编辑器
+    const editor = CodeMirror(document.getElementById('editor'), {
+        lineNumbers: true,
+        mode: "levelHighlight",
+        lineWrapping: true,
+        extraKeys: {"Tab": false} // 禁用Tab键
+    });
+
+    // 处理函数
+    function processText() {
+    const input = editor.getValue();
+    const lines = input.split('\n');
+    let result = [];
+    let currentLevel = 0;
+    let counters = [0, 0, 0];
+    let continuationDepth = 0;
+    let isContinuation = false;
+
+    const resetLowerCounters = (level) => {
+        for (let i = level; i < 3; i++) counters[i] = 0;
+    };
+
+    for (let line of lines) {
+        line = line.trimEnd();
+        
+        // 处理层级标记（仅设置当前层级）
+        if (line.startsWith('.1')) {
+            currentLevel = 1;
+            resetLowerCounters(1);
+            continuationDepth = 0;
+            isContinuation = false;
+            continue;
+        } else if (line.startsWith('.2')) {
+            currentLevel = 2;
+            resetLowerCounters(2);
+            continuationDepth = 0;
+            isContinuation = false;
+            continue;
+        } else if (line.startsWith('.3')) {
+            currentLevel = 3;
+            continuationDepth = 0;
+            isContinuation = false;
+            continue;
+        }
+
+        // 处理空行
+        if (line === '') {
+            result.push('̲');
+            continuationDepth = 0;
+            isContinuation = false;
+            continue;
+        }
+
+        // 处理内容行（在此处递增计数器）
+        if (currentLevel > 0) {
+            const levelIndex = currentLevel - 1;
+            let indent = '　'.repeat(2 * (currentLevel - 1) + continuationDepth * 2);
+            let number = '';
+
+            if (!isContinuation) {
+                counters[levelIndex]++; // 核心修改：在内容行递增计数器
+                resetLowerCounters(currentLevel);
+                number = toFullWidthNumber(counters[levelIndex]) + '　';
+            }
+
+            if (line.endsWith('\\')) {
+                result.push(indent + number + line.slice(0, -1));
+                continuationDepth = isContinuation ? continuationDepth + 1 : 1;
+                isContinuation = true;
+            } else {
+                result.push(indent + number + line);
+                continuationDepth = 0;
+                isContinuation = false;
+            }
+        }
+    }
+
+        document.getElementById('output').value = result.join('\n');
+    }
+
+    // 工具函数
+    function toFullWidthNumber(num) {
+    return String(num).replace(/[0-9]/g, match => 
+        String.fromCharCode(match.charCodeAt(0) + 65248)
+    );
+}
+
+    function clearEditor() {
+        editor.setValue('');
+        document.getElementById('output').value = '';
+    }
+
+    function copyOutput() {
+        const output = document.getElementById('output');
+        output.select();
+        navigator.clipboard.writeText(output.value);
+    }
+
+    function showHelp() {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('helpModal').style.display = 'block';
+    }
+
+    function hideHelp() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('helpModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
