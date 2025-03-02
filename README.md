@@ -1,5 +1,9 @@
 # AutoFormat-html
-Help solve the formatting problem of displaying plain text on web pages.<br>
+This tool can be formatted by automatically inserting full-width punctuation. Simply open AutoFormat.html online with a browser to use it.
+这个工具可通过运用自动插入全角符号以实现网页文本的格式化。只需用浏览器在线打开format.html即可使用。
+
+下载位置：
+　　
 You can use it like this:
 <p align="center">
   <table>
