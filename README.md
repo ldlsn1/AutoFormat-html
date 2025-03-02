@@ -1,12 +1,12 @@
 # AutoFormat-html
-This tool can be formatted by automatically inserting full-width punctuation. Simply open AutoFormat.html online with a browser to use it.<br>
-这个工具可通过运用自动插入全角符号以实现网页纯文本的格式化(例如应用于百度贴吧的发贴)。只需用浏览器在线打开format.html即可使用。<br>
+　　This tool can be formatted by automatically inserting full-width punctuation. Simply open AutoFormat.html online with a browser to use it.<br>
+<br>　　<br>
+　　这个工具可通过运用自动插入全角符号以实现网页纯文本的格式化(例如应用于百度贴吧的发贴)。只需用浏览器在线打开format.html即可使用。<br>
 <br>
-下载位置：[main](https://github.com/ldlsn1/AutoFormat-html/tree/main/main)
-<br>
-　　<br>
-<br>
-You can use it like this:
+　　下载位置：[main](https://github.com/ldlsn1/AutoFormat-html/tree/main/main)
+<br>　　<br>
+<br>　　<br>
+　　You can use it like this:
 <p align="center">
   <table>
     <tr>
